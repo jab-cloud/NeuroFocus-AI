@@ -1,0 +1,12 @@
+{
+  "name": "focusmind-ai-backend",
+  "version": "1.0.0",
+  "description": "Local AI coach proxy for FocusMind using OpenAI.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
