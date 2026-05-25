@@ -3,6 +3,7 @@ import process from 'node:process';
 
 const PORT = Number(process.env.PORT ?? 3000);
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const OPENAI_MODEL = process.env.OPENAI_MODEL ?? 'gpt-4o-mini';
 const OPENAI_URL = 'https://api.openai.com/v1/chat/completions';
 
 function sendJson(res, status, payload) {
@@ -45,7 +46,7 @@ async function handleAiChat(req, res) {
   }
 
   const requestBody = {
-    model: 'gpt-3.5-turbo',
+    model: OPENAI_MODEL,
     messages: [
       {
         role: 'system',
@@ -91,6 +92,11 @@ async function handleAiChat(req, res) {
 const server = http.createServer(async (req, res) => {
   if (req.method === 'OPTIONS') {
     sendJson(res, 204, {});
+    return;
+  }
+
+  if (req.method === 'GET' && req.url === '/health') {
+    sendJson(res, 200, { ok: true });
     return;
   }
 

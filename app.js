@@ -53,6 +53,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const goalsList = document.getElementById('goals-list');
     const soundToggle = document.getElementById('sound-toggle');
     const pauseToggle = document.getElementById('pause-toggle');
+    const todaySessionsEl = document.getElementById('today-sessions');
+    const weekSessionsEl = document.getElementById('week-sessions');
+    const historyList = document.getElementById('history-list');
+    const clearHistoryBtn = document.getElementById('clear-history-btn');
     
     // Verses Database
     const verses = [
@@ -76,8 +80,12 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTheme = localStorage.getItem('theme') || 'light';
     let isSoundEnabled = JSON.parse(localStorage.getItem('isSoundEnabled')) ?? true;
     let isPaused = false;
-    const aiApiEndpoint = 'http://localhost:3000/ai-chat';
+    const configuredApiBase = (window.FOCUSMIND_CONFIG?.apiBaseUrl || '').trim().replace(/\/+$/, '');
+    const aiApiEndpoint = configuredApiBase
+        ? `${configuredApiBase}/ai-chat`
+        : `${window.location.protocol}//${window.location.hostname}:3000/ai-chat`;
     let goals = JSON.parse(localStorage.getItem('goals')) || [];
+    let focusSessions = JSON.parse(localStorage.getItem('focusSessions')) || [];
     let isCoachLoading = false;
     
     // Timer State
@@ -92,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     updateStatsUI();
     renderBlockedList();
     renderGoals();
+    renderSessionHistory();
     updateTimerDisplay();
     updateSoundButton();
     updatePauseButton();
@@ -214,18 +223,6 @@ document.addEventListener('DOMContentLoaded', () => {
         pauseToggle.classList.toggle('paused', isPaused);
     }
 
-    function fetchAiResponse(message) {
-        if (!aiApiEndpoint) return Promise.resolve(null);
-        return fetch(aiApiEndpoint, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ message })
-        })
-        .then(res => res.json())
-        .then(data => data.response || null)
-        .catch(() => null);
-    }
-
     function handleTimerComplete() {
         stopTimer();
         if (!isBreak) {
@@ -235,11 +232,13 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast('Time for a break!');
             userStats.score = Math.min(100, userStats.score + 5);
             saveStats();
+            logFocusSession('focus');
             playTimerSound();
         } else {
             isBreak = false;
             timeLeft = 25 * 60;
             addMessage('coach', 'Break over! Ready for another focused session?');
+            logFocusSession('break');
             showToast('Back to work!');
             playTimerSound();
         }
@@ -509,6 +508,70 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function saveGoals() {
         localStorage.setItem('goals', JSON.stringify(goals));
+    }
+
+    function saveSessions() {
+        localStorage.setItem('focusSessions', JSON.stringify(focusSessions));
+    }
+
+    function logFocusSession(type) {
+        const session = {
+            type,
+            completedAt: new Date().toISOString()
+        };
+        focusSessions.unshift(session);
+        if (focusSessions.length > 50) {
+            focusSessions = focusSessions.slice(0, 50);
+        }
+        saveSessions();
+        renderSessionHistory();
+    }
+
+    function isSameLocalDay(a, b) {
+        return a.getFullYear() === b.getFullYear() &&
+            a.getMonth() === b.getMonth() &&
+            a.getDate() === b.getDate();
+    }
+
+    function isWithinLast7Days(date, now) {
+        const diffMs = now - date;
+        return diffMs >= 0 && diffMs <= (7 * 24 * 60 * 60 * 1000);
+    }
+
+    function renderSessionHistory() {
+        if (!todaySessionsEl || !weekSessionsEl || !historyList) return;
+
+        const now = new Date();
+        const focusOnly = focusSessions.filter((entry) => entry.type === 'focus');
+        const todayCount = focusOnly.filter((entry) => isSameLocalDay(new Date(entry.completedAt), now)).length;
+        const weekCount = focusOnly.filter((entry) => isWithinLast7Days(new Date(entry.completedAt), now)).length;
+
+        todaySessionsEl.textContent = String(todayCount);
+        weekSessionsEl.textContent = String(weekCount);
+
+        historyList.innerHTML = '';
+        if (focusOnly.length === 0) {
+            const emptyRow = document.createElement('li');
+            emptyRow.textContent = 'No completed focus sessions yet.';
+            historyList.appendChild(emptyRow);
+            return;
+        }
+
+        focusOnly.slice(0, 10).forEach((entry) => {
+            const li = document.createElement('li');
+            const date = new Date(entry.completedAt);
+            li.textContent = `Completed focus session on ${date.toLocaleDateString()} at ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+            historyList.appendChild(li);
+        });
+    }
+
+    if (clearHistoryBtn) {
+        clearHistoryBtn.addEventListener('click', () => {
+            focusSessions = [];
+            saveSessions();
+            renderSessionHistory();
+            showToast('Focus history cleared.');
+        });
     }
 
     function updateSoundButton() {

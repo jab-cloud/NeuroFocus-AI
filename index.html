@@ -115,6 +115,18 @@
                 <p id="analytics-summary">You've been 80% more productive than last week!</p>
             </div>
         </section>
+
+        <section id="history-section">
+            <div class="card">
+                <h2>Focus Session History</h2>
+                <div class="history-stats">
+                    <p><strong>Today:</strong> <span id="today-sessions">0</span> sessions</p>
+                    <p><strong>This Week:</strong> <span id="week-sessions">0</span> sessions</p>
+                </div>
+                <ul id="history-list" aria-label="Recent completed focus sessions"></ul>
+                <button id="clear-history-btn" type="button">Clear History</button>
+            </div>
+        </section>
     </main>
 
     <footer>
@@ -122,6 +134,7 @@
     </footer>
 
     <div id="toast-container" aria-live="assertive"></div>
+    <script src="config.js"></script>
     <script src="app.js"></script>
 </body>
 </html>

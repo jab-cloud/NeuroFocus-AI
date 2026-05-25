@@ -310,6 +310,43 @@ input:checked + .slider:before {
     color: #718096;
 }
 
+.history-stats {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 0.75rem;
+}
+
+.history-stats p {
+    margin: 0;
+    background-color: #edf2f7;
+    padding: 0.4rem 0.6rem;
+    border-radius: 6px;
+}
+
+#history-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem 0;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+#history-list li {
+    padding: 0.45rem 0.6rem;
+    margin-bottom: 0.4rem;
+    border-radius: 6px;
+    background-color: var(--bg-color);
+    border: 1px solid var(--border-color);
+    font-size: 0.92rem;
+}
+
+#clear-history-btn {
+    background-color: #e53e3e;
+    color: #fff;
+    align-self: flex-start;
+}
+
 #chat-window {
     height: 200px;
     overflow-y: auto;
