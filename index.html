@@ -104,6 +104,19 @@
             </div>
         </section>
 
+        <section id="lock-section">
+            <div class="card">
+                <h2>Strict Lock</h2>
+                <p>This mode prevents exiting Focus Mode until your chosen timer ends.</p>
+                <div class="lock-controls">
+                    <label for="lock-hours-input">Lock duration (hours)</label>
+                    <input type="number" id="lock-hours-input" min="1" max="168" value="24">
+                    <button id="activate-lock-btn" type="button">Activate Lock</button>
+                </div>
+                <p id="lock-status" class="small">No active lock.</p>
+            </div>
+        </section>
+
         <section id="analytics-section">
             <div class="card">
                 <h2>Screen Time Analytics</h2>
@@ -125,6 +138,23 @@
                 </div>
                 <ul id="history-list" aria-label="Recent completed focus sessions"></ul>
                 <button id="clear-history-btn" type="button">Clear History</button>
+            </div>
+        </section>
+
+        <section id="bible-section">
+            <div class="card">
+                <h2>Bible Explorer</h2>
+                <p>Read any verse/passage from the Bible (all books) by reference.</p>
+                <div class="bible-controls">
+                    <input type="text" id="verse-reference-input" placeholder="e.g. John 3:16 or Psalm 23" aria-label="Bible reference">
+                    <select id="verse-translation" aria-label="Bible translation">
+                        <option value="kjv">KJV</option>
+                        <option value="web">WEB</option>
+                    </select>
+                    <button id="get-verse-btn" type="button">Get Passage</button>
+                    <button id="random-verse-btn" type="button">Random Verse</button>
+                </div>
+                <div id="bible-output" class="bible-output small">Enter a reference to load scripture.</div>
             </div>
         </section>
     </main>

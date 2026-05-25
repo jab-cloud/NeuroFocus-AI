@@ -57,6 +57,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const weekSessionsEl = document.getElementById('week-sessions');
     const historyList = document.getElementById('history-list');
     const clearHistoryBtn = document.getElementById('clear-history-btn');
+    const lockHoursInput = document.getElementById('lock-hours-input');
+    const activateLockBtn = document.getElementById('activate-lock-btn');
+    const lockStatusEl = document.getElementById('lock-status');
+    const verseReferenceInput = document.getElementById('verse-reference-input');
+    const verseTranslationSelect = document.getElementById('verse-translation');
+    const getVerseBtn = document.getElementById('get-verse-btn');
+    const randomVerseBtn = document.getElementById('random-verse-btn');
+    const bibleOutput = document.getElementById('bible-output');
     
     // Verses Database
     const verses = [
@@ -87,6 +95,7 @@ document.addEventListener('DOMContentLoaded', () => {
         : '';
     let goals = JSON.parse(localStorage.getItem('goals')) || [];
     let focusSessions = JSON.parse(localStorage.getItem('focusSessions')) || [];
+    let strictLockUntil = Number(localStorage.getItem('strictLockUntil') || 0);
     let isCoachLoading = false;
     
     // Timer State
@@ -102,6 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderBlockedList();
     renderGoals();
     renderSessionHistory();
+    renderStrictLockStatus();
     updateTimerDisplay();
     updateSoundButton();
     updatePauseButton();
@@ -158,6 +168,13 @@ document.addEventListener('DOMContentLoaded', () => {
     // Focus Mode Toggle
     focusToggle.addEventListener('click', () => {
         if (isFocusMode) {
+            if (isStrictLockActive()) {
+                const remaining = formatDuration(getStrictLockRemainingMs());
+                showToast(`Strict Lock active. Remaining: ${remaining}`);
+                addMessage('coach', `Strict Lock is active. Keep going for ${remaining} before you can exit Focus Mode.`);
+                renderStrictLockStatus();
+                return;
+            }
             showChallenge();
         } else {
             enterFocusMode();
@@ -349,6 +366,14 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     verifyChallengeBtn.addEventListener('click', () => {
+        if (isStrictLockActive()) {
+            const remaining = formatDuration(getStrictLockRemainingMs());
+            addMessage('coach', `Strict Lock is active. Exit is blocked for ${remaining}.`);
+            showToast(`Strict Lock active: ${remaining} left`);
+            renderStrictLockStatus();
+            return;
+        }
+
         if (parseInt(challengeAnswerEl.value) === currentChallenge) {
             exitFocusMode();
         } else {
@@ -393,6 +418,55 @@ document.addEventListener('DOMContentLoaded', () => {
             renderBlockedList();
         }
     });
+
+    if (activateLockBtn) {
+        activateLockBtn.addEventListener('click', () => {
+            const hours = Number(lockHoursInput?.value || 24);
+            if (!Number.isFinite(hours) || hours < 1 || hours > 168) {
+                showToast('Set lock duration between 1 and 168 hours.');
+                return;
+            }
+            strictLockUntil = Date.now() + (hours * 60 * 60 * 1000);
+            localStorage.setItem('strictLockUntil', String(strictLockUntil));
+            renderStrictLockStatus();
+            addMessage('coach', `Strict Lock enabled for ${hours} hour(s). Stay focused and finish strong.`);
+            showToast(`Strict Lock enabled for ${hours} hour(s).`);
+        });
+    }
+
+    function getStrictLockRemainingMs() {
+        return Math.max(0, strictLockUntil - Date.now());
+    }
+
+    function isStrictLockActive() {
+        return getStrictLockRemainingMs() > 0;
+    }
+
+    function formatDuration(ms) {
+        const totalMinutes = Math.ceil(ms / 60000);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        if (hours <= 0) return `${minutes}m`;
+        return `${hours}h ${minutes}m`;
+    }
+
+    function renderStrictLockStatus() {
+        if (!lockStatusEl) return;
+        const remaining = getStrictLockRemainingMs();
+        if (remaining <= 0) {
+            lockStatusEl.textContent = 'No active lock.';
+            strictLockUntil = 0;
+            localStorage.removeItem('strictLockUntil');
+            return;
+        }
+        lockStatusEl.textContent = `Strict Lock active. Exit is blocked for ${formatDuration(remaining)}.`;
+    }
+
+    setInterval(() => {
+        if (isStrictLockActive()) {
+            renderStrictLockStatus();
+        }
+    }, 30000);
 
     // AI Coach Chat
     const handleSendMessage = () => {
@@ -441,6 +515,68 @@ document.addEventListener('DOMContentLoaded', () => {
     chatInput.addEventListener('keypress', (e) => {
         if (e.key === 'Enter') handleSendMessage();
     });
+
+    if (getVerseBtn) {
+        getVerseBtn.addEventListener('click', loadRequestedPassage);
+    }
+
+    if (verseReferenceInput) {
+        verseReferenceInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') loadRequestedPassage();
+        });
+    }
+
+    if (randomVerseBtn) {
+        randomVerseBtn.addEventListener('click', loadRandomVerse);
+    }
+
+    async function loadRequestedPassage() {
+        const reference = verseReferenceInput?.value?.trim();
+        const translation = (verseTranslationSelect?.value || 'kjv').toLowerCase();
+        if (!reference) {
+            showToast('Enter a Bible reference first.');
+            return;
+        }
+        setBibleOutput('Loading passage...');
+        try {
+            const url = `https://bible-api.com/${encodeURIComponent(reference)}?translation=${encodeURIComponent(translation)}`;
+            const res = await fetch(url);
+            if (!res.ok) {
+                throw new Error('Unable to fetch this reference.');
+            }
+            const data = await res.json();
+            const heading = `${data.reference || reference} (${String(data.translation_name || translation).toUpperCase()})`;
+            const text = (data.text || '').trim();
+            setBibleOutput(`${heading}\n\n${text}`);
+        } catch (err) {
+            console.warn('Bible lookup failed', err);
+            setBibleOutput('Unable to load passage right now. Check your reference and internet connection.');
+        }
+    }
+
+    async function loadRandomVerse() {
+        const translation = (verseTranslationSelect?.value || 'kjv').toLowerCase();
+        setBibleOutput('Loading random verse...');
+        try {
+            const url = `https://bible-api.com/data/${encodeURIComponent(translation)}/random`;
+            const res = await fetch(url);
+            if (!res.ok) {
+                throw new Error('Unable to fetch random verse');
+            }
+            const data = await res.json();
+            const ref = data.reference || `${data.book_name || data.book || 'Bible'} ${data.chapter || ''}:${data.verse || ''}`.trim();
+            const text = (data.text || '').trim();
+            setBibleOutput(`${ref} (${translation.toUpperCase()})\n\n${text}`);
+        } catch (err) {
+            console.warn('Random verse failed', err);
+            setBibleOutput('Unable to load a random verse right now.');
+        }
+    }
+
+    function setBibleOutput(text) {
+        if (!bibleOutput) return;
+        bibleOutput.textContent = text;
+    }
 
     function getFallbackResponse(text) {
         let response = "";

@@ -347,6 +347,51 @@ input:checked + .slider:before {
     align-self: flex-start;
 }
 
+.lock-controls,
+.bible-controls {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+    margin-bottom: 0.75rem;
+}
+
+#lock-hours-input,
+#verse-reference-input,
+#verse-translation {
+    padding: 0.5rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
+#verse-reference-input {
+    flex: 1 1 230px;
+}
+
+#activate-lock-btn {
+    background-color: #d69e2e;
+    color: #fff;
+}
+
+#get-verse-btn {
+    background-color: var(--primary-color);
+    color: #fff;
+}
+
+#random-verse-btn {
+    background-color: var(--secondary-color);
+    color: #fff;
+}
+
+.bible-output {
+    border: 1px solid var(--border-color);
+    background-color: var(--bg-color);
+    border-radius: 8px;
+    padding: 0.75rem;
+    min-height: 84px;
+    white-space: pre-wrap;
+}
+
 #chat-window {
     height: 200px;
     overflow-y: auto;
