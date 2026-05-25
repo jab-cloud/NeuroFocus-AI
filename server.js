@@ -20,6 +20,19 @@ function sendError(res, status, message) {
   sendJson(res, status, { error: message });
 }
 
+function summarizeOpenAiError(errorText) {
+  try {
+    const parsed = JSON.parse(errorText);
+    const message = parsed?.error?.message;
+    if (typeof message === 'string' && message.trim()) {
+      return message.trim().slice(0, 240);
+    }
+  } catch {
+    // ignore parse issues and fall back to raw text
+  }
+  return String(errorText || 'Unknown OpenAI error').slice(0, 240);
+}
+
 async function handleAiChat(req, res) {
   if (!OPENAI_API_KEY) {
     sendError(res, 503, 'OpenAI API key not configured. Set OPENAI_API_KEY in your environment.');
@@ -71,7 +84,8 @@ async function handleAiChat(req, res) {
     if (!openaiRes.ok) {
       const errorText = await openaiRes.text();
       console.error('OpenAI error', openaiRes.status, errorText);
-      sendError(res, 502, 'OpenAI service error');
+      const summary = summarizeOpenAiError(errorText);
+      sendError(res, 502, `OpenAI service error (${openaiRes.status}): ${summary}`);
       return;
     }
 
