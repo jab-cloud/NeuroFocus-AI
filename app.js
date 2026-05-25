@@ -80,10 +80,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let currentTheme = localStorage.getItem('theme') || 'light';
     let isSoundEnabled = JSON.parse(localStorage.getItem('isSoundEnabled')) ?? true;
     let isPaused = false;
+    const offlineCoachMode = Boolean(window.FOCUSMIND_CONFIG?.offlineCoachMode);
     const configuredApiBase = (window.FOCUSMIND_CONFIG?.apiBaseUrl || '').trim().replace(/\/+$/, '');
-    const aiApiEndpoint = configuredApiBase
+    const aiApiEndpoint = !offlineCoachMode && configuredApiBase
         ? `${configuredApiBase}/ai-chat`
-        : `${window.location.protocol}//${window.location.hostname}:3000/ai-chat`;
+        : '';
     let goals = JSON.parse(localStorage.getItem('goals')) || [];
     let focusSessions = JSON.parse(localStorage.getItem('focusSessions')) || [];
     let isCoachLoading = false;
@@ -105,6 +106,9 @@ document.addEventListener('DOMContentLoaded', () => {
     updateSoundButton();
     updatePauseButton();
     checkAndUpdateStreak();
+    if (offlineCoachMode) {
+        addMessage('coach', 'Offline Coach Mode is active. You are using free built-in guidance.');
+    }
 
     // Theme Toggle
     themeToggle.addEventListener('click', () => {

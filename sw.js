@@ -1,4 +1,4 @@
-const CACHE_NAME = 'focusmind-v1.3'; // Update this version when assets change
+const CACHE_NAME = 'focusmind-v1.4'; // Update this version when assets change
 const ASSETS = [
     './',
     'index.html',

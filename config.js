@@ -1,4 +1,5 @@
 window.FOCUSMIND_CONFIG = window.FOCUSMIND_CONFIG || {
-  // Render backend URL. If Render assigns a different subdomain, update this value.
-  apiBaseUrl: 'https://neurofocus-ai-api.onrender.com'
+  // Keep empty in fully free mode to disable paid API calls.
+  apiBaseUrl: '',
+  offlineCoachMode: true
 };
