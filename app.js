@@ -51,8 +51,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const goalInput = document.getElementById('goal-input');
     const addGoalBtn = document.getElementById('add-goal-btn');
     const goalsList = document.getElementById('goals-list');
+    const presetButtons = document.querySelectorAll('.preset-btn');
+    const customMinutesInput = document.getElementById('custom-minutes-input');
+    const applyCustomDurationBtn = document.getElementById('apply-custom-duration-btn');
     const soundToggle = document.getElementById('sound-toggle');
     const pauseToggle = document.getElementById('pause-toggle');
+    const analyticsSummaryEl = document.getElementById('analytics-summary');
+    const recommendationSummaryEl = document.getElementById('recommendation-summary');
+    const recommendationsList = document.getElementById('recommendations-list');
+    const refreshRecommendationsBtn = document.getElementById('refresh-recommendations-btn');
     const todaySessionsEl = document.getElementById('today-sessions');
     const weekSessionsEl = document.getElementById('week-sessions');
     const historyList = document.getElementById('history-list');
@@ -93,6 +100,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const aiApiEndpoint = !offlineCoachMode && configuredApiBase
         ? `${configuredApiBase}/ai-chat`
         : '';
+    let sessionDurationMinutes = Number(localStorage.getItem('sessionDurationMinutes')) || 25;
     let goals = JSON.parse(localStorage.getItem('goals')) || [];
     let focusSessions = JSON.parse(localStorage.getItem('focusSessions')) || [];
     let strictLockUntil = Number(localStorage.getItem('strictLockUntil') || 0);
@@ -100,18 +108,24 @@ document.addEventListener('DOMContentLoaded', () => {
     
     // Timer State
     let timerInterval = null;
-    let timeLeft = 25 * 60;
+    let timeLeft = sessionDurationMinutes * 60;
     let isBreak = false;
 
     // Initialize UI
     safeGuardToggle.checked = isSafeGuardActive;
     document.documentElement.setAttribute('data-theme', currentTheme);
+    if (customMinutesInput) {
+        customMinutesInput.value = String(sessionDurationMinutes);
+    }
     themeToggle.textContent = currentTheme === 'light' ? '🌙' : '☀️';
     updateStatsUI();
     renderBlockedList();
     renderGoals();
     renderSessionHistory();
     renderStrictLockStatus();
+    renderTimerPresetState();
+    renderAnalyticsSummary();
+    renderRecommendations();
     updateTimerDisplay();
     updateSoundButton();
     updatePauseButton();
@@ -138,6 +152,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
             addMessage('coach', 'Safe-Search Guard disabled. Be careful out there.');
         }
+        renderRecommendations();
     });
 
     // Sound Toggle
@@ -165,6 +180,29 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    presetButtons.forEach((button) => {
+        button.addEventListener('click', () => {
+            const minutes = Number(button.getAttribute('data-minutes'));
+            setSessionDuration(minutes);
+        });
+    });
+
+    if (applyCustomDurationBtn) {
+        applyCustomDurationBtn.addEventListener('click', () => {
+            const minutes = Number(customMinutesInput?.value || sessionDurationMinutes);
+            setSessionDuration(minutes);
+        });
+    }
+
+    if (customMinutesInput) {
+        customMinutesInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const minutes = Number(customMinutesInput.value || sessionDurationMinutes);
+                setSessionDuration(minutes);
+            }
+        });
+    }
+
     // Focus Mode Toggle
     focusToggle.addEventListener('click', () => {
         if (isFocusMode) {
@@ -183,10 +221,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function enterFocusMode() {
         isFocusMode = true;
+        isBreak = false;
+        timeLeft = sessionDurationMinutes * 60;
         focusToggle.textContent = 'Exit Focus Mode';
         focusToggle.classList.add('active');
         focusToggle.setAttribute('aria-pressed', 'true');
         document.body.style.backgroundColor = currentTheme === 'light' ? '#fff5f5' : '#4a2c2c';
+        updateTimerDisplay();
         
         const focusVerse = getRandomVerseByTag('focus');
         addMessage('coach', `Focus Mode activated. ${focusVerse.text} (${focusVerse.ref})`);
@@ -208,7 +249,7 @@ document.addEventListener('DOMContentLoaded', () => {
         addMessage('coach', 'Focus Mode deactivated. Great work! Take a short break.');
         
         stopTimer();
-        timeLeft = 25 * 60;
+        timeLeft = sessionDurationMinutes * 60;
         isBreak = false;
         updateTimerDisplay();
     }
@@ -257,7 +298,7 @@ document.addEventListener('DOMContentLoaded', () => {
             playTimerSound();
         } else {
             isBreak = false;
-            timeLeft = 25 * 60;
+            timeLeft = sessionDurationMinutes * 60;
             addMessage('coach', 'Break over! Ready for another focused session?');
             logFocusSession('break');
             showToast('Back to work!');
@@ -265,6 +306,139 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         updateTimerDisplay();
         if (isFocusMode) startTimer();
+    }
+
+    function setSessionDuration(minutes) {
+        const normalized = Math.max(5, Math.min(180, Math.round(Number(minutes) || sessionDurationMinutes)));
+        sessionDurationMinutes = normalized;
+        localStorage.setItem('sessionDurationMinutes', String(sessionDurationMinutes));
+        if (customMinutesInput) {
+            customMinutesInput.value = String(sessionDurationMinutes);
+        }
+        if (!isFocusMode) {
+            isBreak = false;
+            timeLeft = sessionDurationMinutes * 60;
+            updateTimerDisplay();
+        }
+        renderTimerPresetState();
+        renderAnalyticsSummary();
+        renderRecommendations();
+        if (isFocusMode) {
+            showToast(`Saved ${sessionDurationMinutes}-minute session for the next round.`);
+        } else {
+            showToast(`Timer set to ${sessionDurationMinutes} minutes.`);
+        }
+    }
+
+    function renderTimerPresetState() {
+        presetButtons.forEach((button) => {
+            const minutes = Number(button.getAttribute('data-minutes'));
+            button.classList.toggle('active', minutes === sessionDurationMinutes);
+        });
+    }
+
+    function getFocusSessionCounts() {
+        const now = new Date();
+        const focusOnly = focusSessions.filter((entry) => entry.type === 'focus');
+        return {
+            today: focusOnly.filter((entry) => isSameLocalDay(new Date(entry.completedAt), now)).length,
+            week: focusOnly.filter((entry) => isWithinLast7Days(new Date(entry.completedAt), now)).length
+        };
+    }
+
+    function renderAnalyticsSummary() {
+        if (!analyticsSummaryEl) return;
+        const completedGoals = goals.filter((goal) => goal.completed).length;
+        const counts = getFocusSessionCounts();
+        const goalsText = goals.length > 0
+            ? `${completedGoals}/${goals.length} goals completed`
+            : 'no goals set yet';
+        analyticsSummaryEl.textContent = `Today: ${counts.today} focus session(s), ${goalsText}, ${blockedApps.length} blocker(s), and a ${userStats.streak}-day streak.`;
+    }
+
+    function renderRecommendations() {
+        if (!recommendationsList || !recommendationSummaryEl) return;
+
+        const counts = getFocusSessionCounts();
+        const completedGoals = goals.filter((goal) => goal.completed).length;
+        const openGoals = goals.length - completedGoals;
+        const recommendations = [];
+
+        if (counts.today === 0) {
+            recommendations.push({
+                title: 'Start with a short sprint',
+                detail: `Use the ${Math.min(sessionDurationMinutes, 25)}-minute timer to build momentum before chasing a longer session.`
+            });
+        }
+
+        if (goals.length === 0) {
+            recommendations.push({
+                title: 'Write one clear target',
+                detail: 'Add a single top goal before you start. Clear goals reduce drift faster than motivation does.'
+            });
+        } else if (openGoals > 0) {
+            recommendations.push({
+                title: 'Finish before adding more',
+                detail: `${openGoals} goal(s) are still open. Completing one current target will sharpen the rest of the day.`
+            });
+        }
+
+        if (!isSafeGuardActive) {
+            recommendations.push({
+                title: 'Turn on Safe-Search Guard',
+                detail: 'Enable it on harder days so your environment supports your focus instead of testing it.'
+            });
+        }
+
+        if (blockedApps.length < 3) {
+            recommendations.push({
+                title: 'Block your top distractions',
+                detail: 'Add at least three high-risk sites or apps so friction appears before impulse does.'
+            });
+        }
+
+        if (!isStrictLockActive()) {
+            recommendations.push({
+                title: 'Use a timed lock for deep work',
+                detail: 'A 1-hour strict lock is a strong default when willpower feels thin.'
+            });
+        }
+
+        if (userStats.streak >= 3) {
+            recommendations.push({
+                title: 'Protect your streak',
+                detail: 'You already have momentum. Set tomorrow\'s first task before you stop for the day.'
+            });
+        }
+
+        if (sessionDurationMinutes > 60) {
+            recommendations.push({
+                title: 'Trim long sessions if needed',
+                detail: 'If resistance is high, step down to 50 minutes and win consistency first.'
+            });
+        }
+
+        if (recommendations.length === 0) {
+            recommendations.push({
+                title: 'Keep your current system',
+                detail: 'Your setup looks solid right now. Repeat today\'s routine and protect the next session start time.'
+            });
+        }
+
+        const visibleRecommendations = recommendations.slice(0, 5);
+        recommendationSummaryEl.textContent = `Advice based on ${counts.today} session(s) today, a ${userStats.streak}-day streak, ${blockedApps.length} blocker(s), and your current timer settings.`;
+        recommendationsList.innerHTML = '';
+
+        visibleRecommendations.forEach((recommendation) => {
+            const li = document.createElement('li');
+            const title = document.createElement('strong');
+            const detail = document.createElement('span');
+            title.textContent = recommendation.title;
+            detail.textContent = recommendation.detail;
+            li.appendChild(title);
+            li.appendChild(detail);
+            recommendationsList.appendChild(li);
+        });
     }
 
     // Goals Logic
@@ -429,6 +603,7 @@ document.addEventListener('DOMContentLoaded', () => {
             strictLockUntil = Date.now() + (hours * 60 * 60 * 1000);
             localStorage.setItem('strictLockUntil', String(strictLockUntil));
             renderStrictLockStatus();
+            renderRecommendations();
             addMessage('coach', `Strict Lock enabled for ${hours} hour(s). Stay focused and finish strong.`);
             showToast(`Strict Lock enabled for ${hours} hour(s).`);
         });
@@ -457,6 +632,7 @@ document.addEventListener('DOMContentLoaded', () => {
             lockStatusEl.textContent = 'No active lock.';
             strictLockUntil = 0;
             localStorage.removeItem('strictLockUntil');
+            renderRecommendations();
             return;
         }
         lockStatusEl.textContent = `Strict Lock active. Exit is blocked for ${formatDuration(remaining)}.`;
@@ -528,6 +704,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (randomVerseBtn) {
         randomVerseBtn.addEventListener('click', loadRandomVerse);
+    }
+
+    if (refreshRecommendationsBtn) {
+        refreshRecommendationsBtn.addEventListener('click', () => {
+            renderAnalyticsSummary();
+            renderRecommendations();
+            showToast('Recommendations refreshed.');
+        });
     }
 
     async function loadRequestedPassage() {
@@ -627,6 +811,9 @@ document.addEventListener('DOMContentLoaded', () => {
     function addMessage(sender, text) {
         const msgDiv = document.createElement('div');
         msgDiv.className = `message ${sender}`;
+        if (sender === 'coach' && text.includes('Thinking...')) {
+            msgDiv.classList.add('thinking');
+        }
         msgDiv.textContent = text;
         chatWindow.appendChild(msgDiv);
         chatWindow.scrollTop = chatWindow.scrollHeight;
@@ -640,18 +827,26 @@ document.addEventListener('DOMContentLoaded', () => {
     function saveStats() {
         localStorage.setItem('userStats', JSON.stringify(userStats));
         updateStatsUI();
+        renderAnalyticsSummary();
+        renderRecommendations();
     }
 
     function saveBlockedApps() {
         localStorage.setItem('blockedApps', JSON.stringify(blockedApps));
+        renderAnalyticsSummary();
+        renderRecommendations();
     }
 
     function saveGoals() {
         localStorage.setItem('goals', JSON.stringify(goals));
+        renderAnalyticsSummary();
+        renderRecommendations();
     }
 
     function saveSessions() {
         localStorage.setItem('focusSessions', JSON.stringify(focusSessions));
+        renderAnalyticsSummary();
+        renderRecommendations();
     }
 
     function logFocusSession(type) {

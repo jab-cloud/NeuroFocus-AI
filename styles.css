@@ -134,6 +134,46 @@ button:active {
     margin-bottom: 1rem;
 }
 
+.timer-setup {
+    margin-bottom: 1.25rem;
+    padding: 0.85rem;
+    background: linear-gradient(135deg, rgba(74, 144, 226, 0.08), rgba(56, 161, 105, 0.08));
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+}
+
+.preset-buttons,
+.custom-timer-row {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.preset-buttons {
+    margin-bottom: 0.6rem;
+}
+
+.preset-btn,
+#apply-custom-duration-btn {
+    background-color: #edf2f7;
+    color: var(--text-color);
+    border: 1px solid var(--border-color);
+}
+
+.preset-btn.active {
+    background-color: var(--primary-color);
+    color: #fff;
+    border-color: var(--primary-color);
+}
+
+#custom-minutes-input {
+    width: 110px;
+    padding: 0.55rem;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+}
+
 #pause-toggle.paused {
     background-color: #f6ad55;
     color: white;
@@ -392,6 +432,44 @@ input:checked + .slider:before {
     white-space: pre-wrap;
 }
 
+#recommendation-summary {
+    margin-top: 0;
+    margin-bottom: 0.75rem;
+}
+
+#recommendations-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1rem 0;
+    display: grid;
+    gap: 0.75rem;
+}
+
+#recommendations-list li {
+    padding: 0.8rem 0.9rem;
+    border-radius: 10px;
+    background: linear-gradient(180deg, rgba(74, 144, 226, 0.08), rgba(255, 255, 255, 0.2));
+    border: 1px solid var(--border-color);
+}
+
+#recommendations-list strong {
+    display: block;
+    margin-bottom: 0.2rem;
+    color: var(--text-color);
+}
+
+#recommendations-list span {
+    display: block;
+    color: #4a5568;
+    font-size: 0.92rem;
+}
+
+#refresh-recommendations-btn {
+    align-self: flex-start;
+    background-color: #2c5282;
+    color: #fff;
+}
+
 #chat-window {
     height: 200px;
     overflow-y: auto;
@@ -507,9 +585,9 @@ footer {
     align-self: flex-start;
 }
 
-.message.coach:has-text("Thinking") {
+.message.coach.thinking {
     font-style: italic;
-    animation: spin 0.8s linear infinite;
+    opacity: 0.85;
 }
 
 /* Accessibility: Focus styles */
@@ -549,6 +627,21 @@ button:focus, input:focus {
     
     #chat-window {
         height: 250px;
+    }
+
+    .preset-buttons,
+    .custom-timer-row,
+    .lock-controls,
+    .bible-controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    #custom-minutes-input,
+    #lock-hours-input,
+    #verse-reference-input,
+    #verse-translation {
+        width: 100%;
     }
     
     .message {
