@@ -15,3 +15,19 @@ To enable Pages on the repository (if not already enabled):
 Notes:
 - Ensure `icon-192.png` and `icon-512.png` exist in the repo root for the PWA install prompt.
 - The site will be available at `https://<your-username>.github.io/<repo-name>/` once the workflow completes.
+
+## Backend (Render Free Web Service)
+
+This repo now includes `render.yaml` for backend deployment.
+
+1. In Render, click **New +** > **Blueprint**.
+2. Connect/select this GitHub repo: `jab-cloud/NeuroFocus-AI`.
+3. Keep the service name as `neurofocus-ai-api` (so frontend `config.js` matches).
+4. Set `OPENAI_API_KEY` when prompted.
+5. Deploy the Blueprint.
+
+After deploy, confirm this URL returns `{"ok":true}`:
+
+`https://neurofocus-ai-api.onrender.com/health`
+
+If Render gives you a different subdomain, update `config.js` with your actual backend URL and push again.
