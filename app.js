@@ -47,6 +47,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const verifyChallengeBtn = document.getElementById('verify-challenge');
     const toastContainer = document.getElementById('toast-container');
     const safeGuardToggle = document.getElementById('safe-guard-toggle');
+    const addXBlockBtn = document.getElementById('add-x-block-btn');
+    const exportNextdnsBtn = document.getElementById('export-nextdns-btn');
+    const xBlockStatusEl = document.getElementById('x-block-status');
+    const xBlockChecklistEl = document.getElementById('x-block-checklist');
+    const androidDnsReady = document.getElementById('android-dns-ready');
+    const iphoneDnsReady = document.getElementById('iphone-dns-ready');
+    const browserDnsReady = document.getElementById('browser-dns-ready');
     const themeToggle = document.getElementById('theme-toggle');
     const goalInput = document.getElementById('goal-input');
     const addGoalBtn = document.getElementById('add-goal-btn');
@@ -104,6 +111,11 @@ document.addEventListener('DOMContentLoaded', () => {
     let goals = JSON.parse(localStorage.getItem('goals')) || [];
     let focusSessions = JSON.parse(localStorage.getItem('focusSessions')) || [];
     let strictLockUntil = Number(localStorage.getItem('strictLockUntil') || 0);
+    let blockerSetup = JSON.parse(localStorage.getItem('blockerSetup')) || {
+        androidDnsReady: false,
+        iphoneDnsReady: false,
+        browserDnsReady: false
+    };
     let isCoachLoading = false;
     
     // Timer State
@@ -126,6 +138,7 @@ document.addEventListener('DOMContentLoaded', () => {
     renderTimerPresetState();
     renderAnalyticsSummary();
     renderRecommendations();
+    renderXBlockStatus();
     updateTimerDisplay();
     updateSoundButton();
     updatePauseButton();
@@ -153,6 +166,7 @@ document.addEventListener('DOMContentLoaded', () => {
             addMessage('coach', 'Safe-Search Guard disabled. Be careful out there.');
         }
         renderRecommendations();
+        renderXBlockStatus();
     });
 
     // Sound Toggle
@@ -661,7 +675,56 @@ document.addEventListener('DOMContentLoaded', () => {
             blockedApps.splice(index, 1);
             saveBlockedApps();
             renderBlockedList();
+            renderXBlockStatus();
         }
+    });
+
+    if (blockInput) {
+        blockInput.placeholder = 'e.g. instagram.com or x.com';
+    }
+
+    if (addXBlockBtn) {
+        addXBlockBtn.addEventListener('click', () => {
+            const xDomains = getXBlockDomains();
+            let added = 0;
+
+            xDomains.forEach((domain) => {
+                if (!blockedApps.includes(domain)) {
+                    blockedApps.push(domain);
+                    added += 1;
+                }
+            });
+
+            saveBlockedApps();
+            renderBlockedList();
+            renderXBlockStatus();
+            if (added > 0) {
+                showToast(`Added ${added} X domains to your block list.`);
+                addMessage('coach', 'X domains added to the app-level list. For real blocking, finish the DNS steps below.');
+            } else {
+                showToast('X domains are already in the list.');
+            }
+        });
+    }
+
+    if (exportNextdnsBtn) {
+        exportNextdnsBtn.addEventListener('click', () => {
+            downloadNextdnsBlocklist();
+        });
+    }
+
+    [
+        [androidDnsReady, 'androidDnsReady'],
+        [iphoneDnsReady, 'iphoneDnsReady'],
+        [browserDnsReady, 'browserDnsReady']
+    ].forEach(([element, key]) => {
+        if (!element) return;
+        element.checked = Boolean(blockerSetup[key]);
+        element.addEventListener('change', () => {
+            blockerSetup[key] = element.checked;
+            localStorage.setItem('blockerSetup', JSON.stringify(blockerSetup));
+            renderXBlockStatus();
+        });
     });
 
     if (activateLockBtn) {
@@ -707,6 +770,73 @@ document.addEventListener('DOMContentLoaded', () => {
             return;
         }
         lockStatusEl.textContent = `Strict Lock active. Exit is blocked for ${formatDuration(remaining)}.`;
+    }
+
+    function getXBlockDomains() {
+        return [
+            'x.com',
+            'www.x.com',
+            'twitter.com',
+            'www.twitter.com',
+            't.co',
+            'twimg.com',
+            'pbs.twimg.com',
+            'abs.twimg.com',
+            'mobile.twitter.com'
+        ];
+    }
+
+    function isXBlockedInApp() {
+        return getXBlockDomains().every((domain) => blockedApps.includes(domain));
+    }
+
+    function getXBlockChecklist() {
+        return [
+            { label: 'X domains in app list', done: isXBlockedInApp() },
+            { label: 'Android Private DNS set', done: Boolean(blockerSetup.androidDnsReady) },
+            { label: 'iPhone DNS profile set', done: Boolean(blockerSetup.iphoneDnsReady) },
+            { label: 'Browser DNS set', done: Boolean(blockerSetup.browserDnsReady) },
+            { label: 'Safe-Search Guard on', done: Boolean(isSafeGuardActive) }
+        ];
+    }
+
+    function renderXBlockStatus() {
+        if (xBlockStatusEl) {
+            const doneCount = getXBlockChecklist().filter((item) => item.done).length;
+            const fullyReady = doneCount === getXBlockChecklist().length;
+            xBlockStatusEl.textContent = fullyReady
+                ? 'X is fully blocked in your setup checklist.'
+                : 'X is not fully blocked yet. Finish the checklist below.';
+        }
+
+        if (!xBlockChecklistEl) return;
+
+        const checklist = getXBlockChecklist();
+        xBlockChecklistEl.innerHTML = '';
+
+        checklist.forEach((item) => {
+            const li = document.createElement('li');
+            li.textContent = item.label;
+            const state = document.createElement('span');
+            state.textContent = item.done ? 'Done' : 'Not set';
+            li.appendChild(state);
+            xBlockChecklistEl.appendChild(li);
+        });
+    }
+
+    function downloadNextdnsBlocklist() {
+        const domains = getXBlockDomains();
+        const text = domains.join('\n');
+        const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+        const url = URL.createObjectURL(blob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = 'nextdns-x-blocklist.txt';
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        URL.revokeObjectURL(url);
+        showToast('NextDNS blocklist exported.');
     }
 
     setInterval(() => {
@@ -914,6 +1044,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('blockedApps', JSON.stringify(blockedApps));
         renderAnalyticsSummary();
         renderRecommendations();
+        renderXBlockStatus();
     }
 
     function saveGoals() {

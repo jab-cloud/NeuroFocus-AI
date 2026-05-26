@@ -91,6 +91,39 @@
             </div>
         </section>
 
+        <section id="x-blocker-section">
+            <div class="card">
+                <h2>X Blocker</h2>
+                <p>Use this as a companion for blocking X on Android, iPhone, and browsers.</p>
+                <div class="x-action-row">
+                    <button id="add-x-block-btn" type="button">Add X Domains</button>
+                    <button id="export-nextdns-btn" type="button">Export NextDNS Blocklist</button>
+                </div>
+                <div class="x-status-panel">
+                    <p id="x-block-status">X is not fully blocked yet.</p>
+                    <ul id="x-block-checklist" aria-label="X blocker checklist"></ul>
+                </div>
+                <div class="x-platform-grid">
+                    <div class="x-platform-card">
+                        <h3>Android</h3>
+                        <p>Use Private DNS or a DNS filter app.</p>
+                        <label><input type="checkbox" id="android-dns-ready"> Private DNS set</label>
+                    </div>
+                    <div class="x-platform-card">
+                        <h3>iPhone</h3>
+                        <p>Use a DNS profile or Screen Time restrictions.</p>
+                        <label><input type="checkbox" id="iphone-dns-ready"> DNS profile set</label>
+                    </div>
+                    <div class="x-platform-card">
+                        <h3>Browser</h3>
+                        <p>Chrome and Firefox can use their own secure DNS settings.</p>
+                        <label><input type="checkbox" id="browser-dns-ready"> Browser DNS set</label>
+                    </div>
+                </div>
+                <p class="small">This app can help you configure the block, but actual blocking happens in the phone or browser DNS layer.</p>
+            </div>
+        </section>
+
         <section id="coach-section">
             <div class="card">
                 <h2>AI Accountability Coach</h2>
