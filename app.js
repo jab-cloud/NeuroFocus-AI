@@ -680,7 +680,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     if (blockInput) {
-        blockInput.placeholder = 'e.g. instagram.com or x.com';
+        blockInput.placeholder = 'e.g. x.com or pornhub.com';
     }
 
     if (addXBlockBtn) {
@@ -699,10 +699,10 @@ document.addEventListener('DOMContentLoaded', () => {
             renderBlockedList();
             renderXBlockStatus();
             if (added > 0) {
-                showToast(`Added ${added} X domains to your block list.`);
-                addMessage('coach', 'X domains added to the app-level list. For real blocking, finish the DNS steps below.');
+                showToast(`Added ${added} adult-content domains to your block list.`);
+                addMessage('coach', 'Adult-content domains added to the app-level list. For real blocking, finish the DNS steps below.');
             } else {
-                showToast('X domains are already in the list.');
+                showToast('Adult-content domains are already in the list.');
             }
         });
     }
@@ -782,7 +782,19 @@ document.addEventListener('DOMContentLoaded', () => {
             'twimg.com',
             'pbs.twimg.com',
             'abs.twimg.com',
-            'mobile.twitter.com'
+            'mobile.twitter.com',
+            'pornhub.com',
+            'www.pornhub.com',
+            'xvideos.com',
+            'www.xvideos.com',
+            'xnxx.com',
+            'www.xnxx.com',
+            'youporn.com',
+            'www.youporn.com',
+            'redtube.com',
+            'www.redtube.com',
+            'onlyfans.com',
+            'www.onlyfans.com'
         ];
     }
 
@@ -792,9 +804,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function getXBlockChecklist() {
         return [
-            { label: 'X domains in app list', done: isXBlockedInApp() },
-            { label: 'Android Private DNS set', done: Boolean(blockerSetup.androidDnsReady) },
-            { label: 'iPhone DNS profile set', done: Boolean(blockerSetup.iphoneDnsReady) },
+            { label: 'Adult domains in app list', done: isXBlockedInApp() },
+            { label: 'Android DNS set', done: Boolean(blockerSetup.androidDnsReady) },
+            { label: 'iPhone DNS set', done: Boolean(blockerSetup.iphoneDnsReady) },
             { label: 'Browser DNS set', done: Boolean(blockerSetup.browserDnsReady) },
             { label: 'Safe-Search Guard on', done: Boolean(isSafeGuardActive) }
         ];
@@ -805,8 +817,8 @@ document.addEventListener('DOMContentLoaded', () => {
             const doneCount = getXBlockChecklist().filter((item) => item.done).length;
             const fullyReady = doneCount === getXBlockChecklist().length;
             xBlockStatusEl.textContent = fullyReady
-                ? 'X is fully blocked in your setup checklist.'
-                : 'X is not fully blocked yet. Finish the checklist below.';
+                ? 'Adult content is fully blocked in your setup checklist.'
+                : 'Adult content is not fully blocked yet. Finish the checklist below.';
         }
 
         if (!xBlockChecklistEl) return;
@@ -826,17 +838,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function downloadNextdnsBlocklist() {
         const domains = getXBlockDomains();
-        const text = domains.join('\n');
+        const text = [
+            '# Adult Content Blocking Guide',
+            '# Add these domains to your DNS blocklist if your provider supports domain blocking:',
+            ...domains,
+            '',
+            '# Recommended setup:',
+            '# 1. Enable adult-content filtering in NextDNS or your DNS provider.',
+            '# 2. Set Android Private DNS.',
+            '# 3. Install the DNS profile on iPhone.',
+            '# 4. Disable browser Secure DNS if it bypasses your system settings.'
+        ].join('\n');
         const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = 'nextdns-x-blocklist.txt';
+        link.download = 'adult-content-blocking-guide.txt';
         document.body.appendChild(link);
         link.click();
         link.remove();
         URL.revokeObjectURL(url);
-        showToast('NextDNS blocklist exported.');
+        showToast('Adult content guide exported.');
     }
 
     setInterval(() => {
