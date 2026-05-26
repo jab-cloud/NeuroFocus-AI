@@ -116,12 +116,14 @@ document.addEventListener('DOMContentLoaded', () => {
         iphoneDnsReady: false,
         browserDnsReady: false
     };
+    let focusState = JSON.parse(localStorage.getItem('focusState')) || null;
     let isCoachLoading = false;
     
     // Timer State
     let timerInterval = null;
     let timeLeft = sessionDurationMinutes * 60;
     let isBreak = false;
+    let timerDeadline = null;
 
     // Initialize UI
     safeGuardToggle.checked = isSafeGuardActive;
@@ -139,10 +141,11 @@ document.addEventListener('DOMContentLoaded', () => {
     renderAnalyticsSummary();
     renderRecommendations();
     renderXBlockStatus();
-    updateTimerDisplay();
     updateSoundButton();
     updatePauseButton();
     checkAndUpdateStreak();
+    restoreFocusState();
+    updateTimerDisplay();
     if (offlineCoachMode) {
         addMessage('coach', 'Offline Coach Mode is active. You are using free built-in guidance.');
     }
@@ -192,6 +195,7 @@ document.addEventListener('DOMContentLoaded', () => {
             startTimer();
             addMessage('coach', 'Timer resumed. Stay focused!');
         }
+        saveFocusState();
     });
 
     presetButtons.forEach((button) => {
@@ -236,12 +240,14 @@ document.addEventListener('DOMContentLoaded', () => {
     function enterFocusMode() {
         isFocusMode = true;
         isBreak = false;
+        isPaused = false;
         timeLeft = sessionDurationMinutes * 60;
         focusToggle.textContent = 'Exit Focus Mode';
         focusToggle.classList.add('active');
         focusToggle.setAttribute('aria-pressed', 'true');
         document.body.style.backgroundColor = currentTheme === 'light' ? '#fff5f5' : '#4a2c2c';
         updateTimerDisplay();
+        saveFocusState();
         
         const focusVerse = getRandomVerseByTag('focus');
         addMessage('coach', `Focus Mode activated. ${focusVerse.text} (${focusVerse.ref})`);
@@ -255,6 +261,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function exitFocusMode() {
         isFocusMode = false;
+        isPaused = false;
         focusToggle.textContent = 'Enter Focus Mode';
         focusToggle.classList.remove('active');
         focusToggle.setAttribute('aria-pressed', 'false');
@@ -266,12 +273,13 @@ document.addEventListener('DOMContentLoaded', () => {
         timeLeft = sessionDurationMinutes * 60;
         isBreak = false;
         updateTimerDisplay();
+        saveFocusState();
     }
 
     // Timer Logic
     function updateTimerDisplay() {
-        const mins = Math.floor(timeLeft / 60);
-        const secs = timeLeft % 60;
+        const mins = Math.floor(Math.max(0, timeLeft) / 60);
+        const secs = Math.max(0, timeLeft) % 60;
         timerDisplay.textContent = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
         document.title = `${timerDisplay.textContent} - FocusMind`;
     }
@@ -281,6 +289,7 @@ document.addEventListener('DOMContentLoaded', () => {
         timerInterval = setInterval(() => {
             timeLeft--;
             updateTimerDisplay();
+            saveFocusState();
             if (timeLeft <= 0) {
                 handleTimerComplete();
             }
@@ -290,6 +299,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function stopTimer() {
         clearInterval(timerInterval);
         timerInterval = null;
+        saveFocusState();
     }
 
     function updatePauseButton() {
@@ -319,6 +329,7 @@ document.addEventListener('DOMContentLoaded', () => {
             playTimerSound();
         }
         updateTimerDisplay();
+        saveFocusState();
         if (isFocusMode) startTimer();
     }
 
@@ -334,6 +345,7 @@ document.addEventListener('DOMContentLoaded', () => {
             timeLeft = sessionDurationMinutes * 60;
             updateTimerDisplay();
         }
+        saveFocusState();
         renderTimerPresetState();
         renderAnalyticsSummary();
         renderRecommendations();
@@ -1060,6 +1072,60 @@ document.addEventListener('DOMContentLoaded', () => {
         updateStatsUI();
         renderAnalyticsSummary();
         renderRecommendations();
+    }
+
+    function saveFocusState() {
+        const state = {
+            isFocusMode,
+            isBreak,
+            isPaused,
+            timeLeft,
+            sessionDurationMinutes
+        };
+        localStorage.setItem('focusState', JSON.stringify(state));
+    }
+
+    function restoreFocusState() {
+        if (!focusState) {
+            saveFocusState();
+            return;
+        }
+
+        sessionDurationMinutes = Number(focusState.sessionDurationMinutes) || sessionDurationMinutes;
+        timeLeft = Number(focusState.timeLeft) || (sessionDurationMinutes * 60);
+        isFocusMode = Boolean(focusState.isFocusMode);
+        isBreak = Boolean(focusState.isBreak);
+        isPaused = Boolean(focusState.isPaused);
+
+        if (customMinutesInput) {
+            customMinutesInput.value = String(sessionDurationMinutes);
+        }
+
+        if (!isFocusMode) {
+            saveFocusState();
+            return;
+        }
+
+        focusToggle.textContent = 'Exit Focus Mode';
+        focusToggle.classList.add('active');
+        focusToggle.setAttribute('aria-pressed', 'true');
+        document.body.style.backgroundColor = currentTheme === 'light' ? '#fff5f5' : '#4a2c2c';
+
+        if (isBreak) {
+            addMessage('coach', 'Focus Mode restored. You are on a break right now.');
+        } else {
+            addMessage('coach', 'Focus Mode restored after refresh. Your session is still active.');
+        }
+
+        updatePauseButton();
+        renderTimerPresetState();
+        updateTimerDisplay();
+
+        if (!isPaused) {
+            startTimer();
+        }
+
+        saveFocusState();
     }
 
     function saveBlockedApps() {
