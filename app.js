@@ -367,7 +367,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (counts.today === 0) {
             recommendations.push({
                 title: 'Start with a short sprint',
-                detail: `Use the ${Math.min(sessionDurationMinutes, 25)}-minute timer to build momentum before chasing a longer session.`
+                detail: `Use the ${Math.min(sessionDurationMinutes, 25)}-minute timer to build momentum before chasing a longer session.`,
+                action: sessionDurationMinutes > 25 ? { type: 'set-timer-25', label: 'Use 25 min now' } : null
             });
         }
 
@@ -386,21 +387,24 @@ document.addEventListener('DOMContentLoaded', () => {
         if (!isSafeGuardActive) {
             recommendations.push({
                 title: 'Turn on Safe-Search Guard',
-                detail: 'Enable it on harder days so your environment supports your focus instead of testing it.'
+                detail: 'Enable it on harder days so your environment supports your focus instead of testing it.',
+                action: { type: 'enable-safe-guard', label: 'Enable Guard' }
             });
         }
 
         if (blockedApps.length < 3) {
             recommendations.push({
                 title: 'Block your top distractions',
-                detail: 'Add at least three high-risk sites or apps so friction appears before impulse does.'
+                detail: 'Add at least three high-risk sites or apps so friction appears before impulse does.',
+                action: { type: 'add-suggested-blockers', label: 'Add Suggested Blockers' }
             });
         }
 
         if (!isStrictLockActive()) {
             recommendations.push({
                 title: 'Use a timed lock for deep work',
-                detail: 'A 1-hour strict lock is a strong default when willpower feels thin.'
+                detail: 'A 1-hour strict lock is a strong default when willpower feels thin.',
+                action: { type: 'enable-strict-lock-1h', label: 'Activate 1h Lock' }
             });
         }
 
@@ -414,7 +418,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (sessionDurationMinutes > 60) {
             recommendations.push({
                 title: 'Trim long sessions if needed',
-                detail: 'If resistance is high, step down to 50 minutes and win consistency first.'
+                detail: 'If resistance is high, step down to 50 minutes and win consistency first.',
+                action: { type: 'set-timer-50', label: 'Use 50 min now' }
             });
         }
 
@@ -437,8 +442,74 @@ document.addEventListener('DOMContentLoaded', () => {
             detail.textContent = recommendation.detail;
             li.appendChild(title);
             li.appendChild(detail);
+
+            if (recommendation.action?.type && recommendation.action?.label) {
+                const actionBtn = document.createElement('button');
+                actionBtn.type = 'button';
+                actionBtn.className = 'recommendation-action-btn';
+                actionBtn.setAttribute('data-action', recommendation.action.type);
+                actionBtn.textContent = recommendation.action.label;
+                li.appendChild(actionBtn);
+            }
+
             recommendationsList.appendChild(li);
         });
+    }
+
+    function runRecommendationAction(actionType) {
+        if (!actionType) return;
+
+        if (actionType === 'set-timer-25') {
+            setSessionDuration(25);
+            return;
+        }
+
+        if (actionType === 'set-timer-50') {
+            setSessionDuration(50);
+            return;
+        }
+
+        if (actionType === 'enable-safe-guard') {
+            if (!isSafeGuardActive) {
+                isSafeGuardActive = true;
+                safeGuardToggle.checked = true;
+                localStorage.setItem('isSafeGuardActive', JSON.stringify(true));
+                addMessage('coach', 'Safe-Search Guard enabled from recommendations.');
+                showToast('Safe-Search Guard enabled.');
+                renderRecommendations();
+            }
+            return;
+        }
+
+        if (actionType === 'add-suggested-blockers') {
+            const suggestions = ['tiktok.com', 'instagram.com', 'youtube.com', 'x.com', 'reddit.com'];
+            let added = 0;
+            suggestions.forEach((site) => {
+                if (!blockedApps.includes(site)) {
+                    blockedApps.push(site);
+                    added += 1;
+                }
+            });
+
+            if (added > 0) {
+                saveBlockedApps();
+                renderBlockedList();
+                showToast(`Added ${added} suggested blockers.`);
+                addMessage('coach', `Added ${added} recommended blockers to reduce impulse browsing.`);
+            } else {
+                showToast('Suggested blockers are already in your list.');
+            }
+            return;
+        }
+
+        if (actionType === 'enable-strict-lock-1h') {
+            strictLockUntil = Date.now() + (60 * 60 * 1000);
+            localStorage.setItem('strictLockUntil', String(strictLockUntil));
+            renderStrictLockStatus();
+            renderRecommendations();
+            showToast('Strict Lock activated for 1 hour.');
+            addMessage('coach', 'Strict Lock enabled for 1 hour from recommendations.');
+        }
     }
 
     // Goals Logic
@@ -711,6 +782,14 @@ document.addEventListener('DOMContentLoaded', () => {
             renderAnalyticsSummary();
             renderRecommendations();
             showToast('Recommendations refreshed.');
+        });
+    }
+
+    if (recommendationsList) {
+        recommendationsList.addEventListener('click', (e) => {
+            const actionButton = e.target.closest('.recommendation-action-btn');
+            if (!actionButton) return;
+            runRecommendationAction(actionButton.getAttribute('data-action'));
         });
     }
 
